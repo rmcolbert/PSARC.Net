@@ -1,0 +1,10 @@
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\bin\Debug\PSARCHeader.exe.config
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\obj\Debug\PSARCHeader.csprojResolveAssemblyReference.cache
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\bin\Debug\PSARCHeader.exe
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\bin\Debug\PSARCHeader.pdb
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\bin\Debug\zlib.net.dll
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\obj\Debug\PSARCHeader.exe
+C:\Users\RColbert\Source\Repos\PSARCReader\PSARCHeader\obj\Debug\PSARCHeader.pdb
+C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\PSARCHeader.exe.config
+C:\Source\Repos\PSARC.Net\PSARCHeader\obj\Debug\PSARCHeader.exe
+C:\Source\Repos\PSARC.Net\PSARCHeader\obj\Debug\PSARCHeader.pdb
