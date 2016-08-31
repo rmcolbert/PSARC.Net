@@ -1,8 +1,8 @@
-﻿namespace PSARCReader
-{
-    using System;
-    using System.IO;
+﻿using System;
+using System.IO;
 
+namespace PSArcHandler
+{
     public enum EndianType
     {
         BigEndian,
