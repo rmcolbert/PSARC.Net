@@ -1,6 +1,7 @@
 C:\Source\Repos\PSARC.Net\PSArcHandler\obj\Debug\PSArcHandler.csprojResolveAssemblyReference.cache
 C:\Source\Repos\PSARC.Net\PSArcHandler\bin\Debug\PSArcHandler.dll
 C:\Source\Repos\PSARC.Net\PSArcHandler\bin\Debug\PSArcHandler.pdb
-C:\Source\Repos\PSARC.Net\PSArcHandler\bin\Debug\zlib.net.dll
 C:\Source\Repos\PSARC.Net\PSArcHandler\obj\Debug\PSArcHandler.dll
 C:\Source\Repos\PSARC.Net\PSArcHandler\obj\Debug\PSArcHandler.pdb
+C:\Source\Repos\PSARC.Net\PSArcHandler\bin\Debug\DotNetZip.dll
+C:\Source\Repos\PSARC.Net\PSArcHandler\bin\Debug\DotNetZip.xml

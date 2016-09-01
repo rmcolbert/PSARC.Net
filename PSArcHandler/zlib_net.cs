@@ -2,23 +2,39 @@
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
+using Ionic.Zlib;
 
 namespace PSArcHandler
 {
     class zlib_net
     {
-        public static byte[] Inflate(byte[] CompressedStream)
+
+        public static byte[] Inflate(byte[] CompressedStream, uint zBlocks, uint cBlockSize, ulong fileSize)
         {
             List<byte> outByte = new List<byte>();
             int data = 0;
             int stopByte = -1;
-            zlib.ZInputStream inZStream = new zlib.ZInputStream(new MemoryStream(CompressedStream));
-            while (stopByte != (data = inZStream.Read()))
+
+            long pos = 0;
+
+            // Create an array of decompression streams equal to the number of blocks in the file.
+            ZlibStream[] zStream = new ZlibStream[zBlocks];
+            for (uint i =0; i < zBlocks; i++)
             {
-                byte _dataByte = (byte)data;
-                outByte.Add(_dataByte);
+                MemoryStream zCompressedStream = new MemoryStream(CompressedStream);
+                zCompressedStream.Seek(pos, SeekOrigin.Begin);
+                zStream[i] = new ZlibStream(zCompressedStream, CompressionMode.Decompress);
+
+                while (stopByte != (data = zStream[i].ReadByte()))
+                {
+                    byte _dataByte = (byte)data;
+                    outByte.Add(_dataByte);
+                }
+                pos += zStream[i].TotalIn;
+
+                zStream[i].Close();
             }
-            inZStream.Close();
+
             return outByte.ToArray();
         }
 
@@ -27,7 +43,8 @@ namespace PSArcHandler
             MemoryStream inStream = new MemoryStream(UncompressedStream);
             MemoryStream outStream = new MemoryStream();
             byte[] outData;
-            zlib.ZOutputStream outZStream = new zlib.ZOutputStream(outStream, zlib.zlibConst.Z_DEFAULT_COMPRESSION);
+
+            ZlibStream outZStream = new ZlibStream(outStream, CompressionMode.Compress, CompressionLevel.Default);
             try
             {
                 CopyStream(inStream, outZStream);
@@ -42,6 +59,7 @@ namespace PSArcHandler
             }
             return outData;
         }
+
         public static void CopyStream(Stream input, Stream output)
         {
             byte[] buffer = new byte[2000];

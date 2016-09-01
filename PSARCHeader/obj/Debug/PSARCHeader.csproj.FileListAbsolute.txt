@@ -14,3 +14,6 @@ C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\PSARCHeader.pdb
 C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\PSArcHandler.dll
 C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\zlib.net.dll
 C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\PSArcHandler.pdb
+C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\DotNetZip.dll
+C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\DotNetZip.xml
+C:\Source\Repos\PSARC.Net\PSARCHeader\bin\Debug\TestFiles\NMSARC.8A8FE611.pak

@@ -52,6 +52,9 @@
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+    <None Include="TestFiles\NMSARC.8A8FE611.pak">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\PSArcHandler\PSArcHandler.csproj">
