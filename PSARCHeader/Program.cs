@@ -39,11 +39,27 @@ namespace PSARCHeader
 
             for (int i = 1; i < pSARC.TOC.Count; i++)
             {
-                PSARC.UnpackedFile arcFile = pSARC.readFile(pSARC.TOC[i].fileName);
+                PSARC.UnpackedFile arcFile = pSARC.decompressFile(pSARC.TOC[i].fileName);
                 FileStream output = new FileStream(@".\TestFiles\" + arcFile.fileName.Split('\\', '/').Last(), FileMode.OpenOrCreate);
+                Console.WriteLine("Saving {0} to {1}", arcFile.fileName, output.Name);
                 output.Write(arcFile.binaryFile, 0, arcFile.binaryFile.Length);
                 output.Close();
             }
+
+            DirectoryInfo soureDir = new DirectoryInfo(@".\TestFiles");
+
+            foreach (FileInfo file in soureDir.GetFiles())
+            {
+                FileStream input = file.OpenRead();
+                byte[] binaryInput = new byte[input.Length];
+                input.Read(binaryInput, 0, (int)input.Length); input.Close();
+                PSARC.PackedFile packed = pSARC.compressFile(file.Name, binaryInput);
+
+                Console.WriteLine("Packed file: {0}, Blocks: {1}, Original Size: {2}, Compressed Size: {3}",
+                    packed.TOCEntry.fileName, packed.TOCEntry.blockListStart, packed.TOCEntry.originalSize, packed.compressedFile.LongLength);
+            }
+
+
         }
     }
 }

@@ -11,6 +11,7 @@ namespace PSArcHandler
     {
         private string archiveFileName = "";
         private EndianReader br;
+        private readonly uint defaultBlockSize = 0x00010000; // 64KB
 
         private struct Header
         {
@@ -19,20 +20,29 @@ namespace PSArcHandler
             public uint compressionMethod;  // zlib or lzma
             public uint tocLength;          // Includes Header
             public uint tocEntrySize;       // Size of a single entry in the TOC, currently 30. This allows the size to be expanded in the future while maintaining backward compat.
-            public uint tocEntries;
+            public uint tocEntries;         // Total number of entries including the manifest
             public uint blockSize;          // The size of each block decompressed.
             public uint archiveFlags;
+
+            public Header(bool isDefault) : this(){
+                if (isDefault)
+                {
+                    magicNumber = 0x50534152;
+                    versionNumber = 0x00010004;
+                    compressionMethod = 0x7a6c6962;
+                    blockSize = 0x00010000; // 64KB
+                    archiveFlags = 0x0;
+                }
+            }
         }
         private Header psHeader = new Header();
 
         public struct TOCEntry
         {
-            public byte[] MD5; // len16, all 0's hash is used for the manifest file.
-            public uint blockListStart;
-            public ulong originalSize;
-            public ulong startOffset; // BACK THE READING POINTER UP BY 3!!
-            public ulong actualOffset;
-            public ulong actualBlockStart;
+            public byte[] MD5;              // hash of FILENAME.
+            public uint blockListStart;     // Not used in this code for decompression but needs to be calculated on compression
+            public ulong originalSize;      // UInt40: Read UInt64 and then back the pointer up by 3!!
+            public ulong startOffset;       // UInt40: Read UInt64 and then back the pointer up by 3!!
             public string fileName;
 
             public TOCEntry(byte[] MD5, uint blockListStart, ulong originalSize) : this()
@@ -57,6 +67,17 @@ namespace PSArcHandler
             }
         }
 
+        public struct PackedFile
+        {
+            public TOCEntry TOCEntry;
+            public byte[] compressedFile;
+
+            public PackedFile(TOCEntry TOCEntry, byte[] compressedFile) : this()
+            {
+                this.TOCEntry = TOCEntry;
+                this.compressedFile = compressedFile;
+            }
+        }
         public PSARC()
         {
         }
@@ -87,59 +108,11 @@ namespace PSArcHandler
             psHeader.archiveFlags = br.ReadUInt32();
         }
 
-        public List<TOCEntry> readManifest()
-        {
-            uint i = 0;
-            TOC = new List<TOCEntry>();
-
-            ulong actualOffset = 0;
-            ulong actualBlockStart = 0;
-
-
-            for (i = 0; i < psHeader.tocEntries; i++)
-            {
-                TOCEntry tmp = new TOCEntry();
-                tmp.MD5 = br.ReadBytes(16);
-                tmp.blockListStart = br.ReadUInt32();
-
-                tmp.originalSize = FortyBitInt(br.ReadUInt64());
-                br.BaseStream.Position -= 3;
-
-                tmp.startOffset = FortyBitInt(br.ReadUInt64());
-                br.BaseStream.Position -= 3;
-
-                actualOffset += tmp.startOffset;
-                tmp.actualOffset = actualOffset;
-
-                TOC.Add(tmp);
-            }
-
-            uint zBlocks = TOC[1].blockListStart - TOC[0].blockListStart;
-            uint cBlockSize = psHeader.blockSize;
-
-            // Extract the Manifest File
-            br.BaseStream.Position = (long)TOC[0].actualOffset; // Manifest File
-            byte[] DecompressedStream = zlib_net.Inflate(br.ReadBytes((int)(TOC[1].actualOffset - TOC[0].actualOffset)), zBlocks, cBlockSize, TOC[0].originalSize);
-
-            TOCList = new List<string>(System.Text.Encoding.Default.GetString(DecompressedStream).Split('\n'));
-
-            List<TOCEntry> TOCtmp = TOC;
-            TOC = new List<TOCEntry>();
-            for (i = 0; i < TOCtmp.Count; i++)
-            {
-                TOCEntry tmp = TOCtmp[(int)i];
-                if (i>0) tmp.fileName = TOCList[(int)i-1]; // The manifest doesn't have a file name, so skip the first TOC entry.
-                TOC.Add(tmp);
-            }
-
-            //TOC = TOC.OrderBy(sel => sel.blockListStart).ToList();
-            return TOC;
-        }
-
         public List<TOCEntry> readManifest(string fileName)
         {
             // Check to see if this is the arc file already open.
-            if (fileName.ToLowerInvariant() != archiveFileName.ToLowerInvariant()) {
+            if (fileName.ToLowerInvariant() != archiveFileName.ToLowerInvariant())
+            {
                 archiveFileName = fileName;
                 // Make sure we close any open arc file and release any used memory before opening a new arc file
                 if (br != null) { br.Close(); br.Dispose(); br = null; }
@@ -149,7 +122,39 @@ namespace PSArcHandler
             return readManifest();
         }
 
-        public UnpackedFile readFile(int manifestLocation)
+        public List<TOCEntry> readManifest()
+        {
+            uint i = 0;
+            TOC = new List<TOCEntry>();
+            for (i = 0; i < psHeader.tocEntries; i++)
+            {
+                TOCEntry tmp = new TOCEntry();
+                tmp.MD5 = br.ReadBytes(16);
+                tmp.blockListStart = br.ReadUInt32();
+                tmp.originalSize = FortyBitInt(br.ReadUInt64());
+                br.BaseStream.Position -= 3;
+                tmp.startOffset = FortyBitInt(br.ReadUInt64());
+                br.BaseStream.Position -= 3;
+                TOC.Add(tmp);
+            }
+
+            // Extract the Manifest List
+            UnpackedFile manifest = decompressFile(0);
+            TOCList = new List<string>(System.Text.Encoding.Default.GetString(manifest.binaryFile).Split('\n'));
+
+            List<TOCEntry> TOCtmp = TOC;
+            TOC = new List<TOCEntry>();
+            for (i = 0; i < TOCtmp.Count; i++)
+            {
+                TOCEntry tmp = TOCtmp[(int)i];
+                if (i>0) tmp.fileName = TOCList[(int)i-1]; // The manifest doesn't have a file name, so skip the first TOC entry.
+                TOC.Add(tmp);
+            }
+            TOCtmp = null;
+            return TOC;
+        }
+
+         public UnpackedFile decompressFile(int manifestLocation)
         {
             byte[] outFile = null;
             br.BaseStream.Position = (long)TOC[manifestLocation].startOffset; // From manifest
@@ -158,8 +163,14 @@ namespace PSArcHandler
             br.BaseStream.Position -= 2;    // Rewind 2 bytes
 
             ulong cBlockSize = psHeader.blockSize;
-            ulong zBlocks = (TOC[manifestLocation].originalSize - (TOC[manifestLocation].originalSize % cBlockSize)) / cBlockSize; // Calculate # of whole blocks
-            if ((TOC[manifestLocation].originalSize % cBlockSize) > 0) zBlocks++; // Add 1 block if there was leftover data
+
+            // Calculate the number of blocks the uncompressed file would consume (this is more data than needed for decompression)
+            //ulong zBlocks = ((TOC[manifestLocation].originalSize - (TOC[manifestLocation].originalSize % cBlockSize)) / cBlockSize)
+            //               + (TOC[manifestLocation].originalSize % cBlockSize) == 0 ? 0u : 1u;
+
+            ulong zBlocks = ((TOC[manifestLocation].originalSize - (TOC[manifestLocation].originalSize % cBlockSize)) / cBlockSize);
+            if (TOC[manifestLocation].originalSize % cBlockSize > 0) zBlocks++;
+
 
             if (isZipped == 0x78da || isZipped == 0x7801) // Stream is compressed
             {
@@ -181,16 +192,30 @@ namespace PSArcHandler
             UnpackedFile output2 = new UnpackedFile(TOC[manifestLocation].fileName, outFile);
             return output;
         }
-        public UnpackedFile readFile(String fileName)
+        public UnpackedFile decompressFile(String fileName)
         {
-            if (TOCList.Contains(fileName))     return readFile(1 + TOCList.IndexOf(fileName));
-            
+            if (TOCList.Contains(fileName))     return decompressFile(1 + TOCList.IndexOf(fileName));
             throw new System.IO.FileNotFoundException(String.Format("File size: {0} not found in {1}", fileName, archiveFileName));
         }
 
-        static private ulong FortyBitInt(ulong InputData)
+        public PackedFile compressFile(String fileName, byte[] binaryFile)
         {
-            return InputData >> 24;
+            Header tmpHeader = new Header(true);
+            TOCEntry tmpEntry = new TOCEntry();
+            tmpEntry.fileName = fileName;
+            tmpEntry.MD5 = new byte[16];
+            tmpEntry.originalSize = (ulong)binaryFile.LongLength;
+            tmpEntry.startOffset = 0;
+            tmpEntry.blockListStart = 0;
+
+            try
+            {
+                byte[] compressedFile = zlib_net.Deflate(binaryFile, tmpHeader.blockSize);
+                return new PackedFile(tmpEntry, compressedFile);
+            } catch { }
+
+            return new PackedFile();
         }
+        static private ulong FortyBitInt(ulong InputData) { return InputData >> 24; }
     }
 }

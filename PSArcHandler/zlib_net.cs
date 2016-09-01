@@ -38,8 +38,14 @@ namespace PSArcHandler
             return outByte.ToArray();
         }
 
-        public static byte[] Deflate(byte[] UncompressedStream)
+        public static byte[] Deflate(byte[] UncompressedStream, ulong cBlockSize)
         {
+            //ulong zBlocks = (((ulong)UncompressedStream.LongLength - ((ulong)UncompressedStream.LongLength % cBlockSize)) / cBlockSize)
+            //               + ((ulong)UncompressedStream.LongLength % cBlockSize) == 0 ? 0u : 1u;
+
+            ulong zBlocks = (((ulong)UncompressedStream.LongLength - ((ulong)UncompressedStream.LongLength % cBlockSize)) / cBlockSize);
+            if ((ulong)UncompressedStream.LongLength % cBlockSize > 0) zBlocks++;
+
             MemoryStream inStream = new MemoryStream(UncompressedStream);
             MemoryStream outStream = new MemoryStream();
             byte[] outData;
@@ -47,7 +53,7 @@ namespace PSArcHandler
             ZlibStream outZStream = new ZlibStream(outStream, CompressionMode.Compress, CompressionLevel.Default);
             try
             {
-                CopyStream(inStream, outZStream);
+                CopyStream(inStream, outZStream, cBlockSize);
                 outData = new byte[outStream.Length];
                 outStream.Read(outData, 0, (int)outStream.Length);
             }
@@ -60,11 +66,11 @@ namespace PSArcHandler
             return outData;
         }
 
-        public static void CopyStream(Stream input, Stream output)
+        public static void CopyStream(Stream input, Stream output, ulong cBlockSize)
         {
-            byte[] buffer = new byte[2000];
+            byte[] buffer = new byte[cBlockSize];
             int len;
-            while ((len = input.Read(buffer, 0, 2000)) > 0)
+            while ((len = input.Read(buffer, 0, (int)cBlockSize)) > 0)
             {
                 output.Write(buffer, 0, len);
             }
