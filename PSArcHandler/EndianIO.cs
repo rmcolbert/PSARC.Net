@@ -104,6 +104,22 @@ namespace PSArcHandler
             return BitConverter.ToInt32(array, 0);
         }
 
+        public long ReadInt40()
+        {
+            return this.ReadInt40(this.endianstyle);
+        }
+
+        public long ReadInt40(EndianType EndianType)
+        {
+            byte[] array = base.ReadBytes(8);
+            base.BaseStream.Position -= 3;
+            if (EndianType == EndianType.BigEndian)
+            {
+                Array.Reverse(array);
+            }
+            return BitConverter.ToInt64(array, 0);
+        }
+
         public override long ReadInt64()
         {
             return this.ReadInt64(this.endianstyle);
@@ -182,6 +198,22 @@ namespace PSArcHandler
                 Array.Reverse(array);
             }
             return BitConverter.ToUInt32(array, 0);
+        }
+
+        public ulong ReadUInt40()
+        {
+            return this.ReadUInt40(this.endianstyle);
+        }
+
+        public ulong ReadUInt40(EndianType EndianType)
+        {
+            // Read 5 bytes and copy it into an 8 byte array. Works for BigEndian. Does it work for LittleEndian?
+            var array = new byte[8]; base.ReadBytes(5).CopyTo(array,3);
+            if (EndianType == EndianType.BigEndian)
+            {
+                Array.Reverse(array);
+            }
+            return BitConverter.ToUInt64(array, 0);
         }
 
         public override ulong ReadUInt64()

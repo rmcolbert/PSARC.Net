@@ -9,84 +9,113 @@ namespace PSArcHandler
 {
     public class PSARC
     {
-        private string archiveFileName = "";
         private EndianReader br;
+
         private readonly uint defaultBlockSize = 0x00010000; // 64KB
 
-        private struct Header
+        public struct Header
         {
-            public uint magicNumber;        // 0x50534152 'PSAR'
-            public uint versionNumber;
-            public uint compressionMethod;  // zlib or lzma
-            public uint tocLength;          // Includes Header
-            public uint tocEntrySize;       // Size of a single entry in the TOC, currently 30. This allows the size to be expanded in the future while maintaining backward compat.
-            public uint tocEntries;         // Total number of entries including the manifest
-            public uint blockSize;          // The size of each block decompressed.
-            public uint archiveFlags;
+            public uint MagicNumber;        // 0x50534152 'PSAR'
+            public uint VersionNumber;
+            public uint CompressionMethod;  // zlib or lzma
+            public uint TocLength;          // Includes Header
+            public uint TocEntrySize;       // Size of a single entry in the TOC, currently 30. This allows the size to be expanded in the future while maintaining backward compat.
+            public uint TocEntries;         // Total number of entries including the manifest
+            public uint BlockSize;          // The size of each block decompressed.
+            public uint ArchiveFlags;
 
             public Header(bool isDefault) : this(){
                 if (isDefault)
                 {
-                    magicNumber = 0x50534152;
-                    versionNumber = 0x00010004;
-                    compressionMethod = 0x7a6c6962;
-                    blockSize = 0x00010000; // 64KB
-                    archiveFlags = 0x0;
+                    MagicNumber = 0x50534152;
+                    VersionNumber = 0x00010004;
+                    CompressionMethod = 0x7a6c6962;
+                    BlockSize = 0x00010000; // 64KB
+                    ArchiveFlags = 0x0;
                 }
             }
         }
-        private Header psHeader = new Header();
+        public Header psHeader = new Header();
 
         public struct TOCEntry
         {
             public byte[] MD5;              // hash of FILENAME.
-            public uint blockListStart;     // Not used in this code for decompression but needs to be calculated on compression
-            public ulong originalSize;      // UInt40: Read UInt64 and then back the pointer up by 3!!
-            public ulong startOffset;       // UInt40: Read UInt64 and then back the pointer up by 3!!
-            public string fileName;
+            public uint BlockListStart;     // Not used in this code for decompression but needs to be calculated on compression
+            public ulong OriginalSize;      // UInt40 (5 Bytes)
+            public ulong StartOffset;       // UInt40 (5 Bytes)
+            public string FileName;
 
-            public TOCEntry(byte[] MD5, uint blockListStart, ulong originalSize) : this()
+            public TOCEntry(byte[] MD5, uint blockListStart, ulong originalSize, ulong startOffset) : this()
             {
                 this.MD5 = MD5;
-                this.blockListStart = blockListStart;
-                this.originalSize = originalSize;
+                this.BlockListStart = blockListStart;
+                this.OriginalSize = originalSize;
+                this.StartOffset = startOffset;
+            }
+
+            public TOCEntry(TOCEntry tocEntry, string fileName)
+            {
+                this.MD5 = tocEntry.MD5;
+                this.BlockListStart = tocEntry.BlockListStart;
+                this.OriginalSize = tocEntry.OriginalSize;
+                this.StartOffset = tocEntry.StartOffset;
+                this.FileName = fileName;
             }
         }
         public List<TOCEntry> TOC = new List<TOCEntry>();
-        private List<String> TOCList = new List<string>();
+        private List<String> tocList = new List<string>();
+
+        public uint DefaultBlockSize
+        {
+            get
+            {
+                return defaultBlockSize;
+            }
+        }
 
         public struct UnpackedFile 
         {
-            public String fileName;
-            public byte[] binaryFile;
+            public string FileName;
+            public byte[] BinaryFile;
 
             public UnpackedFile(string fileName, byte[] outFile) : this()
             {
-                this.fileName = fileName;
-                this.binaryFile = outFile;
+                this.FileName = fileName;
+                this.BinaryFile = outFile;
             }
         }
 
         public struct PackedFile
         {
-            public TOCEntry TOCEntry;
-            public byte[] compressedFile;
+            public TOCEntry TocEntry;
+            public byte[] CompressedFile;
 
-            public PackedFile(TOCEntry TOCEntry, byte[] compressedFile) : this()
+            public PackedFile(TOCEntry tocEntry, byte[] compressedFile) : this()
             {
-                this.TOCEntry = TOCEntry;
-                this.compressedFile = compressedFile;
+                this.TocEntry = tocEntry;
+                this.CompressedFile = compressedFile;
             }
         }
+
         public PSARC()
         {
         }
 
         public PSARC(String fileName)
+        { 
+            LoadStream(new FileStream(fileName, FileMode.Open, FileAccess.Read));
+        }
+
+        public PSARC(FileStream archiveStream)
         {
-            archiveFileName = fileName;
-            br = new EndianReader(new FileStream(archiveFileName, FileMode.Open, FileAccess.Read), EndianType.BigEndian);
-            readHeader();
+             LoadStream(archiveStream); 
+        }
+
+        private void LoadStream(FileStream archiveStream)
+        {
+            if (br != null) { br.Close(); br.Dispose(); br = null; }
+            br = new EndianReader(archiveStream, EndianType.BigEndian);
+            ReadManifest();
         }
 
         ~PSARC()
@@ -94,128 +123,114 @@ namespace PSArcHandler
             if (br != null) { br.Close(); br.Dispose(); br = null; }
         }
 
-        private void readHeader()
+        private void ReadHeader()
         {
             br.BaseStream.Position = 0;  // Rewind the stream just in case
             psHeader = new Header();
-            psHeader.magicNumber = br.ReadUInt32();
-            psHeader.versionNumber = br.ReadUInt32();
-            psHeader.compressionMethod = br.ReadUInt32();
-            psHeader.tocLength = br.ReadUInt32();
-            psHeader.tocEntrySize = br.ReadUInt32();
-            psHeader.tocEntries = br.ReadUInt32();
-            psHeader.blockSize = br.ReadUInt32();
-            psHeader.archiveFlags = br.ReadUInt32();
+            psHeader.MagicNumber = br.ReadUInt32();
+            psHeader.VersionNumber = br.ReadUInt32();
+            psHeader.CompressionMethod = br.ReadUInt32();
+            psHeader.TocLength = br.ReadUInt32();
+            psHeader.TocEntrySize = br.ReadUInt32();
+            psHeader.TocEntries = br.ReadUInt32();
+            psHeader.BlockSize = br.ReadUInt32();
+            psHeader.ArchiveFlags = br.ReadUInt32();
         }
 
-        public List<TOCEntry> readManifest(string fileName)
+        public List<TOCEntry> ReadManifest(string fileName)
         {
-            // Check to see if this is the arc file already open.
-            if (fileName.ToLowerInvariant() != archiveFileName.ToLowerInvariant())
-            {
-                archiveFileName = fileName;
-                // Make sure we close any open arc file and release any used memory before opening a new arc file
-                if (br != null) { br.Close(); br.Dispose(); br = null; }
-                br = new EndianReader(new FileStream(archiveFileName, FileMode.Open, FileAccess.Read), EndianType.BigEndian);
-                readHeader();
-            }
-            return readManifest();
+            LoadStream(new FileStream(fileName, FileMode.Open, FileAccess.Read));
+            return ReadManifest();
         }
 
-        public List<TOCEntry> readManifest()
+        public List<TOCEntry> ReadManifest()
         {
+            // Always reload the header before reading the manifest
+            ReadHeader();
+
             uint i = 0;
             TOC = new List<TOCEntry>();
-            for (i = 0; i < psHeader.tocEntries; i++)
-            {
-                TOCEntry tmp = new TOCEntry();
-                tmp.MD5 = br.ReadBytes(16);
-                tmp.blockListStart = br.ReadUInt32();
-                tmp.originalSize = FortyBitInt(br.ReadUInt64());
-                br.BaseStream.Position -= 3;
-                tmp.startOffset = FortyBitInt(br.ReadUInt64());
-                br.BaseStream.Position -= 3;
-                TOC.Add(tmp);
-            }
+            for (i = 0; i < psHeader.TocEntries; i++)
+                TOC.Add(new TOCEntry(br.ReadBytes(16), br.ReadUInt32(), br.ReadUInt40(), br.ReadUInt40()));
 
             // Extract the Manifest List
-            UnpackedFile manifest = decompressFile(0);
-            TOCList = new List<string>(System.Text.Encoding.Default.GetString(manifest.binaryFile).Split('\n'));
+            UnpackedFile manifest = DecompressFile(0);
+            tocList = new List<string>(System.Text.Encoding.Default.GetString(manifest.BinaryFile).Split('\n'));
+            tocList.Insert(0, "manifest.txt");  // Insert an entry for the manifest name
 
-            List<TOCEntry> TOCtmp = TOC;
+            List<TOCEntry> tOCtmp = TOC;
             TOC = new List<TOCEntry>();
-            for (i = 0; i < TOCtmp.Count; i++)
-            {
-                TOCEntry tmp = TOCtmp[(int)i];
-                if (i>0) tmp.fileName = TOCList[(int)i-1]; // The manifest doesn't have a file name, so skip the first TOC entry.
-                TOC.Add(tmp);
-            }
-            TOCtmp = null;
+            for (i = 0; i < tOCtmp.Count; i++)
+                TOC.Add(new TOCEntry(tOCtmp[(int)i], tocList[(int)i])); // Create a new TOC that includes the file name from the manifest
+
+            tOCtmp = null;
             return TOC;
         }
 
-         public UnpackedFile decompressFile(int manifestLocation)
+         public UnpackedFile DecompressFile(int manifestLocation)
         {
+            if (manifestLocation > (psHeader.TocEntries - 1)) return new UnpackedFile();
+
             byte[] outFile = null;
-            br.BaseStream.Position = (long)TOC[manifestLocation].startOffset; // From manifest
+            br.BaseStream.Position = (long)TOC[manifestLocation].StartOffset; // From manifest
 
             UInt16 isZipped = br.ReadUInt16();
             br.BaseStream.Position -= 2;    // Rewind 2 bytes
 
-            ulong cBlockSize = psHeader.blockSize;
+            ulong cBlockSize = psHeader.BlockSize;
 
             // Calculate the number of blocks the uncompressed file would consume (this is more data than needed for decompression)
             //ulong zBlocks = ((TOC[manifestLocation].originalSize - (TOC[manifestLocation].originalSize % cBlockSize)) / cBlockSize)
             //               + (TOC[manifestLocation].originalSize % cBlockSize) == 0 ? 0u : 1u;
 
-            ulong zBlocks = ((TOC[manifestLocation].originalSize - (TOC[manifestLocation].originalSize % cBlockSize)) / cBlockSize);
-            if (TOC[manifestLocation].originalSize % cBlockSize > 0) zBlocks++;
+            ulong zBlocks = ((TOC[manifestLocation].OriginalSize - (TOC[manifestLocation].OriginalSize % cBlockSize)) / cBlockSize);
+            if (TOC[manifestLocation].OriginalSize % cBlockSize > 0) zBlocks++;
 
 
             if (isZipped == 0x78da || isZipped == 0x7801) // Stream is compressed
             {
                 ulong fileSize = zBlocks * cBlockSize;  // Only pass a part of the whole archive stream to be inflated.
-                outFile = zlib_net.Inflate(br.ReadBytes((int)fileSize), (uint)zBlocks, (uint)cBlockSize, TOC[manifestLocation].originalSize);
+                outFile = zlib_net.Inflate(br.ReadBytes((int)fileSize), (uint)zBlocks, (uint)cBlockSize, TOC[manifestLocation].OriginalSize);
             } 
             else
-                outFile = br.ReadBytes((int)TOC[manifestLocation].originalSize);
+                outFile = br.ReadBytes((int)TOC[manifestLocation].OriginalSize);
 
-            if (TOC[manifestLocation].originalSize != (ulong)outFile.LongLength)
+            if (TOC[manifestLocation].OriginalSize != (ulong)outFile.LongLength)
             {
-                throw new InvalidDataException(String.Format("Expected size: {0}, Actual size: {1}", TOC[manifestLocation].originalSize, outFile.LongLength));
+                throw new InvalidDataException(string.Format("Expected size: {0}, Actual size: {1}", TOC[manifestLocation].OriginalSize, outFile.LongLength));
             }
 
-            UnpackedFile output = new UnpackedFile();
-            output.fileName = TOC[manifestLocation].fileName;
-            output.binaryFile = outFile;
+            var output = new UnpackedFile();
+            output.FileName = TOC[manifestLocation].FileName;
+            output.BinaryFile = outFile;
 
-            UnpackedFile output2 = new UnpackedFile(TOC[manifestLocation].fileName, outFile);
+            var output2 = new UnpackedFile(TOC[manifestLocation].FileName, outFile);
             return output;
         }
-        public UnpackedFile decompressFile(String fileName)
+        public UnpackedFile DecompressFile(String fileName)
         {
-            if (TOCList.Contains(fileName))     return decompressFile(1 + TOCList.IndexOf(fileName));
-            throw new System.IO.FileNotFoundException(String.Format("File size: {0} not found in {1}", fileName, archiveFileName));
+            if (tocList.Contains(fileName))     return DecompressFile(tocList.IndexOf(fileName));
+            throw new FileNotFoundException(string.Format("File size: {0} not found.", fileName));
         }
 
-        public PackedFile compressFile(String fileName, byte[] binaryFile)
+        public PackedFile CompressFile(String fileName, byte[] binaryFile)
         {
-            Header tmpHeader = new Header(true);
-            TOCEntry tmpEntry = new TOCEntry();
-            tmpEntry.fileName = fileName;
+            var tmpHeader = new Header(true);
+            var tmpEntry = new TOCEntry();
+            tmpEntry.FileName = fileName;
             tmpEntry.MD5 = new byte[16];
-            tmpEntry.originalSize = (ulong)binaryFile.LongLength;
-            tmpEntry.startOffset = 0;
-            tmpEntry.blockListStart = 0;
+            tmpEntry.OriginalSize = (ulong)binaryFile.LongLength;
+            tmpEntry.StartOffset = 0;
+            tmpEntry.BlockListStart = 0;
 
             try
             {
-                byte[] compressedFile = zlib_net.Deflate(binaryFile, tmpHeader.blockSize);
+                byte[] compressedFile = zlib_net.Deflate(binaryFile, tmpHeader.BlockSize);
                 return new PackedFile(tmpEntry, compressedFile);
             } catch { }
 
             return new PackedFile();
         }
-        static private ulong FortyBitInt(ulong InputData) { return InputData >> 24; }
+        static private ulong FortyBitInt(ulong inputData) { return inputData >> 24; }
     }
 }
