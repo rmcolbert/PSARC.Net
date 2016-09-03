@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using PSArcHandler;
-
+using PSArcHandler.Entities;
 
 namespace PSARCHeader
 {
@@ -26,25 +26,24 @@ namespace PSARCHeader
         {
             UnpackMultipleFiles(m_strTestDirectories);
 
-
             //Test reading archive from disk directly via ReadManifest
             pSarc = new PSARC();
             pSarc.ReadManifest(fileName);
-            if (pSarc.TOC.Count != pSarc.psHeader.TocEntries) throw new Exception("TOC Count does not meet expected value");
+            if (pSarc.TOC.Count != pSarc.m_hdrPSHeader.TocEntries) throw new Exception("TOC Count does not meet expected value");
 
             // Test reading archive from disk directly via constructor
             pSarc = new PSARC(fileName);
             pSarc.ReadManifest();
-            if (pSarc.TOC.Count != pSarc.psHeader.TocEntries) throw new Exception("TOC Count does not meet expected value");
+            if (pSarc.TOC.Count != pSarc.m_hdrPSHeader.TocEntries) throw new Exception("TOC Count does not meet expected value");
 
             // Test reading archive from FileStream
             pSarc = new PSARC(new FileStream(fileName, FileMode.Open, FileAccess.Read));
             pSarc.ReadManifest();
-            if (pSarc.TOC.Count != pSarc.psHeader.TocEntries) throw new Exception("TOC Count does not meet expected value");
+            if (pSarc.TOC.Count != pSarc.m_hdrPSHeader.TocEntries) throw new Exception("TOC Count does not meet expected value");
 
             int index = 0;
             var manifest = new List<string>();
-            foreach (PSARC.TOCEntry entry in pSarc.TOC)
+            foreach (TOCEntry entry in pSarc.TOC)
             {
                 string msg = string.Format("Index: {0}, Name: {1}, \toriginalSize: {2}, \tstartOffset: {3}, \tblockListStart: {4}",
                     index,
@@ -86,16 +85,16 @@ namespace PSARCHeader
         {
             //Throw exection if the file isn't a .pak
             if(!p_strFileName.Contains(".pak"))
-                throw new Exception(string.Format("The file {0} isn't a .pak file", p_strFileName);
+                throw new Exception(string.Format("The file {0} isn't a .pak file", p_strFileName));
 
             using (PSARC psaDecompresser = new PSARC(p_strFileName))
             {
                 psaDecompresser.ReadManifest();
 
-                if (psaDecompresser.TOC.Count != psaDecompresser.psHeader.TocEntries)
+                if (psaDecompresser.TOC.Count != psaDecompresser.m_hdrPSHeader.TocEntries)
                     throw new Exception("TOC Count does not meet expected value");
 
-                foreach (PSARC.TOCEntry tocEntry in psaDecompresser.TOC)
+                foreach (TOCEntry tocEntry in psaDecompresser.TOC)
                 {
                     //Skip the manifest files
                     if (tocEntry.FileName.Contains("manifest"))
@@ -106,7 +105,7 @@ namespace PSARCHeader
             Console.WriteLine(string.Format(" Files: {0} is successfully uncompress", p_strFileName));
         }
 
-        void WriteFile(PSARC.UnpackedFile arcFile)
+        void WriteFile(UnpackedFile arcFile)
         {
             string outputFileName = @".\TestFiles\" + arcFile.FileName.Replace('/', '\\');
             string outputFolder = outputFileName.Substring(0, outputFileName.LastIndexOf('\\'));
@@ -135,7 +134,7 @@ namespace PSARCHeader
 
             // Test expanding by foreach
             Console.WriteLine("Testing file expansion using foreach on TOC");
-            foreach (PSARC.TOCEntry tocEntry in pSarc.TOC)
+            foreach (TOCEntry tocEntry in pSarc.TOC)
                 WriteFile(pSarc.DecompressFile(tocEntry.FileName));
 
             Console.Write("Press any key to continue ...");
@@ -153,7 +152,7 @@ namespace PSARCHeader
             foreach (string file in fileList)
             {
                 if (file.Contains(".pak")) continue;
-                PSARC.PackedFile packed = pSarc.CompressFile(file, File.ReadAllBytes(file));
+                PackedFile packed = pSarc.CompressFile(file, File.ReadAllBytes(file));
 
                 Console.WriteLine("Packed file: {0}, Blocks: {1}, Original Size: {2}, Compressed Size: {3}",
                     packed.TocEntry.FileName, packed.TocEntry.BlockListStart, packed.TocEntry.OriginalSize, packed.CompressedFile.LongLength);
