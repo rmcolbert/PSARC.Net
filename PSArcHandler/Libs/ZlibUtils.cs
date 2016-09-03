@@ -6,28 +6,28 @@ using Ionic.Zlib;
 
 namespace PSArcHandler
 {
-    class zlib_net
+    class ZlibUtils
     {
 
-        public static byte[] Inflate(byte[] CompressedStream, uint zBlocks, uint cBlockSize, ulong fileSize)
+        public static byte[] Inflate(byte[] compressedStream, uint zBlocks, uint cBlockSize, ulong fileSize)
         {
-            List<byte> outByte = new List<byte>();
+            var outByte = new List<byte>();
             int data = 0;
             int stopByte = -1;
 
             long pos = 0;
 
             // Create an array of decompression streams equal to the number of blocks in the file.
-            ZlibStream[] zStream = new ZlibStream[zBlocks];
+            var zStream = new ZlibStream[zBlocks];
             for (uint i =0; i < zBlocks; i++)
             {
-                MemoryStream zCompressedStream = new MemoryStream(CompressedStream);
+                var zCompressedStream = new MemoryStream(compressedStream);
                 zCompressedStream.Seek(pos, SeekOrigin.Begin);
                 zStream[i] = new ZlibStream(zCompressedStream, CompressionMode.Decompress);
 
                 while (stopByte != (data = zStream[i].ReadByte()))
                 {
-                    byte _dataByte = (byte)data;
+                    var _dataByte = (byte)data;
                     outByte.Add(_dataByte);
                 }
                 pos += zStream[i].TotalIn;
@@ -68,7 +68,7 @@ namespace PSArcHandler
 
         public static void CopyStream(Stream input, Stream output, ulong cBlockSize)
         {
-            byte[] buffer = new byte[cBlockSize];
+            var buffer = new byte[cBlockSize];
             int len;
             while ((len = input.Read(buffer, 0, (int)cBlockSize)) > 0)
             {

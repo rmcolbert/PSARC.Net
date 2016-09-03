@@ -55,7 +55,7 @@
     <Compile Include="Entities\TocEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PSARC.cs" />
-    <Compile Include="Libs\zlib_net.cs" />
+    <Compile Include="Libs\ZlibUtils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

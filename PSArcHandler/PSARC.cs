@@ -183,7 +183,7 @@ namespace PSArcHandler
             if (isZipped == 0x78da || isZipped == 0x7801) // Stream is compressed
             {
                 ulong fileSize = zBlocks * cBlockSize;  // Only pass a part of the whole archive stream to be inflated.
-                outFile = zlib_net.Inflate(m_erReader.ReadBytes((int)fileSize), (uint)zBlocks, (uint)cBlockSize, TOC[p_intManifestLocation].OriginalSize);
+                outFile = ZlibUtils.Inflate(m_erReader.ReadBytes((int)fileSize), (uint)zBlocks, (uint)cBlockSize, TOC[p_intManifestLocation].OriginalSize);
             }
             else
                 outFile = m_erReader.ReadBytes((int)TOC[p_intManifestLocation].OriginalSize);
@@ -215,7 +215,7 @@ namespace PSArcHandler
 
             try
             {
-                byte[] compressedFile = zlib_net.Deflate(binaryFile, tmpHeader.BlockSize);
+                byte[] compressedFile = ZlibUtils.Deflate(binaryFile, tmpHeader.BlockSize);
                 return new PackedFile(tmpEntry, compressedFile);
             }
             catch { }
