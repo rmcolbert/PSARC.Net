@@ -13,6 +13,7 @@ namespace PSARCHeader
     {
         //static readonly string fileName = @".\TestFiles\NMSARC.B9700502.pak"; // 920MB PAK
         static readonly string fileName = @".\TestFiles\NMSARC.8A8FE611.pak"; // 10MB PAK w/ DEDUPED FILES
+        static readonly string m_strTestDirectories = @".\TestFiles"; // 10MB PAK w/ DEDUPED FILES
 
         private PSARC pSarc;
 
@@ -23,6 +24,9 @@ namespace PSARCHeader
         }
         void Run(string[] args)
         {
+            UnpackMultipleFiles(m_strTestDirectories);
+
+
             //Test reading archive from disk directly via ReadManifest
             pSarc = new PSARC();
             pSarc.ReadManifest(fileName);
@@ -59,6 +63,47 @@ namespace PSARCHeader
 
             TestDecompression();
             TestCompression();
+        }
+
+        /// <summary>
+        /// Unpack all the .pak files in the directory
+        /// </summary>
+        /// <param name="p_strDirectoryPath">The directory's path</param>
+        private void UnpackMultipleFiles(string p_strDirectoryPath)
+        {
+            string[] lstFiles = Directory.GetFiles(p_strDirectoryPath, "*.pak");
+            Parallel.ForEach<string>(lstFiles, s => DecompressPAKFile(s));
+
+            Console.Write("Press any key to continue ...");
+            Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Decompress a .Pak file
+        /// </summary>
+        /// <param name="p_strFileName">The file's name</param>
+        private void DecompressPAKFile(string p_strFileName)
+        {
+            //Throw exection if the file isn't a .pak
+            if(!p_strFileName.Contains(".pak"))
+                throw new Exception(string.Format("The file {0} isn't a .pak file", p_strFileName);
+
+            using (PSARC psaDecompresser = new PSARC(p_strFileName))
+            {
+                psaDecompresser.ReadManifest();
+
+                if (psaDecompresser.TOC.Count != psaDecompresser.psHeader.TocEntries)
+                    throw new Exception("TOC Count does not meet expected value");
+
+                foreach (PSARC.TOCEntry tocEntry in psaDecompresser.TOC)
+                {
+                    //Skip the manifest files
+                    if (tocEntry.FileName.Contains("manifest"))
+                        continue;
+                    WriteFile(psaDecompresser.DecompressFile(tocEntry.FileName));
+                }
+            }
+            Console.WriteLine(string.Format(" Files: {0} is successfully uncompress", p_strFileName));
         }
 
         void WriteFile(PSARC.UnpackedFile arcFile)

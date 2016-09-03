@@ -7,7 +7,7 @@ using System.IO;
 
 namespace PSArcHandler
 {
-    public class PSARC
+    public class PSARC : IDisposable
     {
         private EndianReader br;
 
@@ -24,7 +24,8 @@ namespace PSArcHandler
             public uint BlockSize;          // The size of each block decompressed.
             public uint ArchiveFlags;
 
-            public Header(bool isDefault) : this(){
+            public Header(bool isDefault) : this()
+            {
                 if (isDefault)
                 {
                     MagicNumber = 0x50534152;
@@ -73,7 +74,7 @@ namespace PSArcHandler
             }
         }
 
-        public struct UnpackedFile 
+        public struct UnpackedFile
         {
             public string FileName;
             public byte[] BinaryFile;
@@ -102,13 +103,18 @@ namespace PSArcHandler
         }
 
         public PSARC(String fileName)
-        { 
+        {
             LoadStream(new FileStream(fileName, FileMode.Open, FileAccess.Read));
         }
 
         public PSARC(FileStream archiveStream)
         {
-             LoadStream(archiveStream); 
+            LoadStream(archiveStream);
+        }
+
+        public void Dispose()
+        {
+            if (br != null) { br.Close(); br.Dispose(); br = null; }
         }
 
         private void LoadStream(FileStream archiveStream)
@@ -167,7 +173,7 @@ namespace PSArcHandler
             return TOC;
         }
 
-         public UnpackedFile DecompressFile(int manifestLocation)
+        public UnpackedFile DecompressFile(int manifestLocation)
         {
             if (manifestLocation > (psHeader.TocEntries - 1)) return new UnpackedFile();
 
@@ -191,7 +197,7 @@ namespace PSArcHandler
             {
                 ulong fileSize = zBlocks * cBlockSize;  // Only pass a part of the whole archive stream to be inflated.
                 outFile = zlib_net.Inflate(br.ReadBytes((int)fileSize), (uint)zBlocks, (uint)cBlockSize, TOC[manifestLocation].OriginalSize);
-            } 
+            }
             else
                 outFile = br.ReadBytes((int)TOC[manifestLocation].OriginalSize);
 
@@ -209,7 +215,7 @@ namespace PSArcHandler
         }
         public UnpackedFile DecompressFile(String fileName)
         {
-            if (tocList.Contains(fileName))     return DecompressFile(tocList.IndexOf(fileName));
+            if (tocList.Contains(fileName)) return DecompressFile(tocList.IndexOf(fileName));
             throw new FileNotFoundException(string.Format("File size: {0} not found.", fileName));
         }
 
@@ -227,10 +233,13 @@ namespace PSArcHandler
             {
                 byte[] compressedFile = zlib_net.Deflate(binaryFile, tmpHeader.BlockSize);
                 return new PackedFile(tmpEntry, compressedFile);
-            } catch { }
+            }
+            catch { }
 
             return new PackedFile();
         }
         static private ulong FortyBitInt(ulong inputData) { return inputData >> 24; }
+
+
     }
 }
