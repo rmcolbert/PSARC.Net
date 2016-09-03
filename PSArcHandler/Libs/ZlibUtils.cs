@@ -40,11 +40,7 @@ namespace PSArcHandler
 
         public static byte[] Deflate(byte[] uncompressedStream, ulong cBlockSize)
         {
-            //ulong zBlocks = (((ulong)UncompressedStream.LongLength - ((ulong)UncompressedStream.LongLength % cBlockSize)) / cBlockSize)
-            //               + ((ulong)UncompressedStream.LongLength % cBlockSize) == 0 ? 0u : 1u;
-
-            ulong zBlocks = (((ulong)uncompressedStream.LongLength - ((ulong)uncompressedStream.LongLength % cBlockSize)) / cBlockSize);
-            if ((ulong)uncompressedStream.LongLength % cBlockSize > 0) zBlocks++;
+            ulong zBlocks = (uint)(Math.Ceiling((ulong)uncompressedStream.LongLength / (double)cBlockSize));
 
             var inStream = new MemoryStream(uncompressedStream);
             var outStream = new MemoryStream();

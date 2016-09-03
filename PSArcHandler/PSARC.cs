@@ -172,13 +172,7 @@ namespace PSArcHandler
 
             ulong cBlockSize = m_hdrPSHeader.BlockSize;
 
-            // Calculate the number of blocks the uncompressed file would consume (this is more data than needed for decompression)
-            //ulong zBlocks = ((TOC[manifestLocation].originalSize - (TOC[manifestLocation].originalSize % cBlockSize)) / cBlockSize)
-            //               + (TOC[manifestLocation].originalSize % cBlockSize) == 0 ? 0u : 1u;
-
-            ulong zBlocks = ((TOC[p_intManifestLocation].OriginalSize - (TOC[p_intManifestLocation].OriginalSize % cBlockSize)) / cBlockSize);
-            if (TOC[p_intManifestLocation].OriginalSize % cBlockSize > 0) zBlocks++;
-
+            ulong zBlocks = (uint)(Math.Ceiling(TOC[p_intManifestLocation].OriginalSize / (double)cBlockSize));
 
             if (isZipped == 0x78da || isZipped == 0x7801) // Stream is compressed
             {
@@ -207,11 +201,11 @@ namespace PSArcHandler
         {
             var tmpHeader = new Header(true);
             var tmpEntry = new TOCEntry();
-            tmpEntry.FileName = fileName;
+            tmpEntry.FileName = fileName.Replace('\\','/');
             tmpEntry.MD5 = new byte[16];
             tmpEntry.OriginalSize = (ulong)binaryFile.LongLength;
             tmpEntry.StartOffset = 0;
-            tmpEntry.BlockListStart = 0;
+            tmpEntry.BlockListStart = (uint)(Math.Ceiling(tmpEntry.OriginalSize / (double)tmpHeader.BlockSize));
 
             try
             {

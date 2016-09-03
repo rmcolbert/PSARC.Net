@@ -13,7 +13,7 @@ namespace PSARCHeader
     {
         //static readonly string fileName = @".\TestFiles\NMSARC.B9700502.pak"; // 920MB PAK
         static readonly string fileName = @".\TestFiles\NMSARC.8A8FE611.pak"; // 10MB PAK w/ DEDUPED FILES
-        static readonly string m_strTestDirectories = @".\TestFiles"; // 10MB PAK w/ DEDUPED FILES
+        static readonly string m_strTestDirectories = @".\TestFiles"; 
 
         private PSARC pSarc;
 
@@ -45,18 +45,20 @@ namespace PSARCHeader
             var manifest = new List<string>();
             foreach (TOCEntry entry in pSarc.TOC)
             {
-                string msg = string.Format("Index: {0}, Name: {1}, \toriginalSize: {2}, \tstartOffset: {3}, \tblockListStart: {4}",
+                string msg = string.Format("Index: {0}, Name: {1}, \toriginalSize: {2}, \tstartOffset: {3}, \tblockListStart: {4}, \tblocks: {5}",
                     index,
-                    entry.FileName.Split('\\', '/').Last(),
+                    entry.FileName,
                     entry.OriginalSize,
                     entry.StartOffset,
-                    entry.BlockListStart);
+                    entry.BlockListStart,
+                    Math.Ceiling(entry.OriginalSize/ (double)pSarc.m_hdrPSHeader.BlockSize)
+                    );
                 manifest.Add(msg);
                 Console.WriteLine(msg);
 
                 index++;
             }
-            File.WriteAllLines(@".\TestFiles\manifestdetails.txt", manifest);
+            File.WriteAllLines(m_strTestDirectories + @"\manifestdetails.txt", manifest);
             Console.Write("Press any key to continue ...");
             Console.ReadKey();
 
@@ -107,7 +109,7 @@ namespace PSARCHeader
 
         void WriteFile(UnpackedFile arcFile)
         {
-            string outputFileName = @".\TestFiles\" + arcFile.FileName.Replace('/', '\\');
+            string outputFileName = m_strTestDirectories + @"\" + arcFile.FileName.Replace('/', '\\');
             string outputFolder = outputFileName.Substring(0, outputFileName.LastIndexOf('\\'));
 
             Directory.CreateDirectory(outputFolder);
@@ -144,19 +146,22 @@ namespace PSARCHeader
         void TestCompression()
         {
             // Test creating ZLib compressed blobs
-            // var soureDir = new DirectoryInfo(@".\TestFiles");
-            GetFileList(@".\TestFiles");
+            GetFileList(m_strTestDirectories);
 
-
+            var results = new List<String>();
             Console.WriteLine("Testing individual zlib file compression");
             foreach (string file in fileList)
             {
                 if (file.Contains(".pak")) continue;
                 PackedFile packed = pSarc.CompressFile(file, File.ReadAllBytes(file));
 
-                Console.WriteLine("Packed file: {0}, Blocks: {1}, Original Size: {2}, Compressed Size: {3}",
+                string msg = string.Format("Packed file: {0}, Blocks: {1}, Original Size: {2}, Compressed Size: {3}",
                     packed.TocEntry.FileName, packed.TocEntry.BlockListStart, packed.TocEntry.OriginalSize, packed.CompressedFile.LongLength);
+
+                Console.WriteLine(msg);
+                results.Add(msg);
             }
+            File.WriteAllLines(m_strTestDirectories + @"\commpressionResults.txt", results);
 
             Console.Write("Press any key to continue ...");
             Console.ReadKey();
@@ -165,11 +170,8 @@ namespace PSARCHeader
         readonly List<string> fileList = new List<string>();
         void GetFileList(string path)
         {
-            foreach (string d in Directory.GetDirectories(path))
-            {
-                foreach (string f in Directory.GetFiles(d)) fileList.Add(f);
-                GetFileList(d);
-            }
+            foreach (string f in Directory.GetFiles(path)) fileList.Add(f);
+            foreach (string d in Directory.GetDirectories(path)) GetFileList(d);
         }
     }
 }
