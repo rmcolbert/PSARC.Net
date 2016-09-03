@@ -47,11 +47,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="EndianIO.cs" />
+    <Compile Include="Entities\Header.cs" />
+    <Compile Include="Entities\PackedFile.cs" />
+    <Compile Include="Entities\UnpackedFile.cs" />
+    <Compile Include="Libs\EndianIO.cs" />
     <Compile Include="GlobalSuppressions.cs" />
+    <Compile Include="Entities\TocEntry.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PSARC.cs" />
-    <Compile Include="zlib_net.cs" />
+    <Compile Include="Libs\zlib_net.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
