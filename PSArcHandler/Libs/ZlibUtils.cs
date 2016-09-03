@@ -46,7 +46,7 @@ namespace PSArcHandler
             var outStream = new MemoryStream();
             byte[] outData;
 
-            var outZStream = new ZlibStream(outStream, CompressionMode.Compress, CompressionLevel.Default);
+            var outZStream = new ZlibStream(outStream, CompressionMode.Compress, CompressionLevel.BestCompression);
             try
             {
                 CopyStream(inStream, outZStream, cBlockSize);

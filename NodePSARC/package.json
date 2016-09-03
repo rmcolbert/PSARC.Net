@@ -1,0 +1,15 @@
+{
+  "name": "node-psarc",
+  "version": "1.0.0",
+  "main": "psarc.js",
+  "dependencies": {
+    "buffer-reader": "^0.1.0",
+    "buffer-write": "0.0.2",
+    "glob": "^7.0.6",
+    "mkdirp": "^0.5.1",
+    "recursive-iterator": "^2.0.1"
+  },
+  "devDependencies": {},
+  "author": "spAnser",
+  "license": "ISC"
+}
