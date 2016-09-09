@@ -184,6 +184,21 @@ namespace PSArcHandler
             return BitConverter.ToUInt16(array, 0);
         }
 
+        public uint ReadUInt24()
+        {
+            return this.ReadUInt24(this.endianstyle);
+        }
+        public uint ReadUInt24(EndianType EndianType)
+        {
+            byte[] sourceArray = base.ReadBytes(3);
+            byte[] destinationArray = new byte[4];
+            Array.Copy(sourceArray, 0, destinationArray, 0, 3);
+            if (EndianType == EndianType.BigEndian)
+            {
+                Array.Reverse(destinationArray);
+            }
+            return BitConverter.ToUInt32(destinationArray, 0);
+        }
         public override uint ReadUInt32()
         {
             return this.ReadUInt32(this.endianstyle);
@@ -618,6 +633,32 @@ namespace PSArcHandler
             }
         }
 
+        public void WriteInt24(int value, EndianType EndianType)
+        {
+            byte[] bytes = BitConverter.GetBytes(v);
+            var bInt24 = new byte[3];
+            for (int i = 0; i < 3; i++) bInt24[i] = bytes[i];
+
+            if (EndianType == EndianType.BigEndian)
+            {
+                Array.Reverse(bInt24);
+            }
+            base.Write(bInt24);
+        }
+
+        public void WriteUInt24(uint v, EndianType EndianType)
+        {
+            byte[] bytes = BitConverter.GetBytes(v);
+            var bInt24 = new byte[3];
+            for (int i = 0; i < 3; i++) bInt24[i] = bytes[i];
+
+            if (EndianType == EndianType.BigEndian)
+            {
+                Array.Reverse(bInt24);
+            }
+            base.Write(bInt24);
+        }
+
         public void WriteInt40(long value, EndianType EndianType)
         {
             byte[] bytes = BitConverter.GetBytes(value);
@@ -628,7 +669,7 @@ namespace PSArcHandler
 
             if (EndianType == EndianType.BigEndian)
             {
-                Array.Reverse(bytes);
+                Array.Reverse(bInt40);
             }
             base.Write(bInt40);
         }
@@ -643,11 +684,10 @@ namespace PSArcHandler
 
             if (EndianType == EndianType.BigEndian)
             {
-                Array.Reverse(bytes);
+                Array.Reverse(bInt40);
             }
-            base.Write(bytes);
+            base.Write(bInt40);
         }
-
     }
 
 }
