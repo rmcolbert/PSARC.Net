@@ -635,7 +635,7 @@ namespace PSArcHandler
 
         public void WriteInt24(int value, EndianType EndianType)
         {
-            byte[] bytes = BitConverter.GetBytes(v);
+            byte[] bytes = BitConverter.GetBytes(value);
             var bInt24 = new byte[3];
             for (int i = 0; i < 3; i++) bInt24[i] = bytes[i];
 
@@ -646,9 +646,9 @@ namespace PSArcHandler
             base.Write(bInt24);
         }
 
-        public void WriteUInt24(uint v, EndianType EndianType)
+        public void WriteUInt24(uint value, EndianType EndianType)
         {
-            byte[] bytes = BitConverter.GetBytes(v);
+            byte[] bytes = BitConverter.GetBytes(value);
             var bInt24 = new byte[3];
             for (int i = 0; i < 3; i++) bInt24[i] = bytes[i];
 
